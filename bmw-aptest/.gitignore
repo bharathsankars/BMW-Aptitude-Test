@@ -1,0 +1,25 @@
+# Node / TypeScript
+node_modules/
+dist/
+*.log
+
+# Environment files
+.env
+.env.*
+.env.local
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build outputs
+*.sqlite
+*.csv
+*.zip
+
+# Dependencies lock files (optional if you prefer reproducible builds)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
