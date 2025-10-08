@@ -1,0 +1,34 @@
+import { AppDataSource } from "../data-source";
+import { ElectricCar } from "../entities/ElectricCar";
+import { applyQuery, QueryInput } from "../utils/queryBuilder";
+
+export class CarsService {
+  private repo = AppDataSource.getRepository(ElectricCar);
+
+  async query(input: QueryInput) {
+    const qb = this.repo.createQueryBuilder("electric_cars");
+    applyQuery(qb, input);
+    const [rows, total] = await qb.getManyAndCount();
+    return { rows, total };
+  }
+
+  getById(id: number) {
+    return this.repo.findOne({ where: { id } });
+  }
+
+  async softDelete(id: number) {
+    const found = await this.repo.findOne({ where: { id, is_active: 1 } });
+    if (!found) return false;
+    await this.repo.update({ id }, { is_active: 0 });
+    return true;
+  }
+
+  async restore(id: number) {
+    const found = await this.repo.findOne({ where: { id, is_active: 0 } });
+    if (!found) return false;
+    await this.repo.update({ id }, { is_active: 1 });
+    return true;
+  }
+}
+
+export const carsService = new CarsService();

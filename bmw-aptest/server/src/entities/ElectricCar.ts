@@ -1,19 +1,17 @@
-// one table: electric_cars — matches the CSV + a soft-delete flag.
-
 import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
 
 @Entity({ name: "electric_cars" })
 export class ElectricCar {
-  @PrimaryGeneratedColumn()               // numeric id
+  @PrimaryGeneratedColumn()
   id!: number;
 
-  @Index() @Column({ length: 64 })        // fast Brand lookups
+  @Index() @Column({ length: 64 }) 
   Brand!: string;
 
-  @Index() @Column({ length: 128 })       // fast Model lookups
+  @Index() @Column({ length: 128 }) 
   Model!: string;
 
-  @Column("decimal", { precision: 4, scale: 2 })  // e.g., 6.20
+  @Column("decimal", { precision: 4, scale: 2 })
   AccelSec!: number;
 
   @Column({ type: "smallint" })
@@ -25,13 +23,13 @@ export class ElectricCar {
   @Column({ type: "smallint" })
   Efficiency_WhKm!: number;
 
-  @Column({ type: "smallint", nullable: true })   // sometimes empty in CSV
+  @Column({ type: "smallint", nullable: true })
   FastCharge_KmH!: number | null;
 
-  @Column({ type: "enum", enum: ["Yes", "No"] })  // boolean-ish in CSV
+  @Column({ type: "enum", enum: ["Yes", "No"] })
   RapidCharge!: "Yes" | "No";
 
-  @Column({ length: 64 })               // AWD/FWD/RWD (keep string for now)
+  @Column({ length: 64 })
   PowerTrain!: string;
 
   @Column({ length: 64 })
@@ -40,18 +38,18 @@ export class ElectricCar {
   @Column({ length: 64 })
   BodyStyle!: string;
 
-  @Column({ type: "char", length: 1 })  // A/B/C/D…
+  @Column({ type: "char", length: 1 })
   Segment!: string;
 
   @Column({ type: "tinyint" })
   Seats!: number;
 
-  @Index() @Column({ type: "int" })     // common sort/filter
+  @Index() @Column({ type: "int" })
   PriceEuro!: number;
 
-  @Column({ type: "date" })             // parsed from mm/dd/yy
+  @Column({ type: "date" })
   Date!: string;
 
-  @Column({ type: "tinyint", width: 1, default: 1 }) // soft-delete flag
-  is_active!: number;                   // 1 = active, 0 = inactive
+  @Column({ type: "tinyint", width: 1, default: 1 })
+  is_active!: number;
 }
