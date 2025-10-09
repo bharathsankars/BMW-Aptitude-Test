@@ -179,12 +179,13 @@ export default function GenericDataGrid() {
     }
   };
 
+  // Cancel Delete confirmation dialog handlers
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setCarToDelete(null);
   };
 
-  // Build a backend query from grid state (safe defaults if API not ready)
+  // Build a backend query from grid state
   function buildQuery(sidebarFiltersOverride?: SidebarFilter[]): QueryInput {
     const filterModel: FilterModel =
       gridApiRef.current?.getFilterModel?.() ?? {};
@@ -304,7 +305,6 @@ export default function GenericDataGrid() {
         }
         action={
           <Stack direction="row" spacing={1}>
-      
             <Tooltip title="Toggle Filters">
               <IconButton onClick={() => setSidebarOpen(true)}>
                 <FilterListIcon />
