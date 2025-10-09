@@ -32,3 +32,14 @@ export async function restore(req: Request, res: Response) {
   if (!ok) return res.status(404).json({ error: "Not found or already active" });
   res.status(204).end();
 }
+
+export async function getUniqueValues(req: Request, res: Response) {
+  const field = req.params.field;
+  if (!field) return res.status(400).json({ error: "Field parameter required" });
+  try {
+    const values = await carsService.getUniqueValues(field);
+    res.json(values);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch unique values" });
+  }
+}

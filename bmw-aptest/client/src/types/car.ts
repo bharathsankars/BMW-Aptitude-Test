@@ -15,5 +15,5 @@ export type ElectricCar = {
   Seats: number;
   PriceEuro: number;
   Date: string;       // YYYY-MM-DD
-  is_active: number;  // 1 or 0
+  is_active: number; 
 };

@@ -29,6 +29,15 @@ export class CarsService {
     await this.repo.update({ id }, { is_active: 1 });
     return true;
   }
+
+  async getUniqueValues(field: string) {
+    const qb = this.repo.createQueryBuilder("electric_cars");
+    qb.select(`DISTINCT electric_cars.${field}`, field)
+      .where("electric_cars.is_active = 1")
+      .orderBy(field, "ASC");
+    const result = await qb.getRawMany();
+    return result.map(row => row[field]);
+  }
 }
 
 export const carsService = new CarsService();
