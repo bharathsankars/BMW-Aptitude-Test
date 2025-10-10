@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type { GridReadyEvent, GridApi, ColumnState } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
 import {
@@ -298,9 +297,11 @@ export default function GenericDataGrid() {
         subheader={
           <Typography
             variant="body2"
-            sx={{ textAlign: "center", color: "text.secondary" }}
+            color="text.secondary"
+            align="center"
+            sx={{ fontSize: "0.875rem" }}
           >
-            Sort data by clicking on column headers
+            Click on column headers to sort data
           </Typography>
         }
         action={
