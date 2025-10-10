@@ -1,4 +1,4 @@
-// reads CSV -> cleans values -> inserts in batches
+
 import fs from "fs";
 import path from "path";
 import { parse } from "csv-parse";
@@ -35,7 +35,7 @@ async function main() {
   const repo = AppDataSource.getRepository(ElectricCar);
 
   if (!fs.existsSync(CSV_PATH)) {
-    throw new Error(`CSV not found at ${CSV_PATH}. Put it there and retry.`);
+    throw new Error(`CSV not found at ${CSV_PATH}.`);
   }
 
   const parser = fs.createReadStream(CSV_PATH).pipe(parse({ columns: true, trim: true }));
@@ -67,8 +67,8 @@ async function main() {
   }
   if (batch.length) await repo.save(batch);
 
-  console.log("✅ Seeding complete.");
+  console.log("+++++++++++++++++Seeding complete.+++++++++++++++++");
   await AppDataSource.destroy();
 }
 
-main().catch(e => { console.error("❌ Seed failed:", e); process.exit(1); });
+main().catch(e => { console.error("-----------------Seed failed:-----------------", e); process.exit(1); });
