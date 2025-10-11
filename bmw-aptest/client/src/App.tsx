@@ -1,10 +1,14 @@
 // app routes + top bar
-import { AppBar, Toolbar, Typography, Container, Box, Divider } from "@mui/material";
+import { AppBar, Toolbar, Typography, Container, Box, Divider, IconButton } from "@mui/material";
+import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { Routes, Route, Link } from "react-router-dom";
+import { useTheme } from "./contexts/ThemeContext";
 import EVGridPage from "./pages/EVGridPage";
 import EVDetailPage from "./pages/EVDetailPage";
 
 export default function App() {
+  const { mode, toggleTheme } = useTheme();
+
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <AppBar position="sticky" elevation={0}>
@@ -19,10 +23,14 @@ export default function App() {
               fontWeight: 700,
               fontSize: "1.25rem",
               letterSpacing: "-0.025em",
+              flexGrow: 1,
             }}
           >
             BMW • Electric Cars
           </Typography>
+          <IconButton onClick={toggleTheme} color="inherit" title={mode==='light' ? 'Switch to dark mode' : 'Switch to light mode'}>
+            {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
+          </IconButton>
         </Toolbar>
       </AppBar>
 

@@ -24,10 +24,12 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ElectricCarIcon from "@mui/icons-material/ElectricCar";
 import { getCar } from "../api/cars";
 import type { ElectricCar } from "../types/car";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function EVDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { mode } = useTheme();
 
   const [car, setCar] = useState<ElectricCar | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export default function EVDetailPage() {
   ];
 
   return (
-    <Card elevation={2} sx={{ maxWidth: 1200, mx: "auto", my: 4, border: '1px solid', borderColor: 'grey.300' }}>
+    <Card elevation={2} sx={{ maxWidth: 1200, mx: "auto", my: 4, border: '1px solid', borderColor: mode === 'light' ? 'grey.300' : '#555' }}>
       <CardContent sx={{ p: { xs: 3, md: 4 } }}>
         {/* Header */}
         <Stack
@@ -157,8 +159,8 @@ export default function EVDetailPage() {
             variant="outlined"
             sx={{
               p: 3,
-              backgroundColor: "grey.50",
-              borderColor: "grey.200",
+              backgroundColor: mode === 'light' ? "grey.50" : "#2a2a2a",
+              borderColor: mode === 'light' ? "grey.200" : "#555",
               borderRadius: 2,
             }}
           >
@@ -176,8 +178,8 @@ export default function EVDetailPage() {
                   px: 1,
                   borderRadius: 1,
                   border: '1px solid',
-                  borderColor: 'grey.200',
-                  backgroundColor: "grey.50",
+                  borderColor: mode === 'light' ? 'grey.200' : "#555",
+                  backgroundColor: mode === 'light' ? "grey.50" : "#2a2a2a",
                 }}
               >
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 140 }}>

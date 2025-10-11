@@ -80,7 +80,7 @@ export default function FilterSidebar({
       } catch (error) {
         console.error("Failed to fetch unique values:", error);
         
-        
+
         setBrandOptions(["Tesla", "BMW", "Audi", "Mercedes", "Nissan", "Volkswagen"]);
         setModelOptions(["Model 3", "i3", "e-tron", "EQC", "Leaf", "ID.3"]);
         setPowerTrainOptions(["AWD", "RWD", "FWD"]);
@@ -178,7 +178,7 @@ export default function FilterSidebar({
                 }}
                 valueLabelDisplay="auto"
                 min={0}
-                max={1000}
+                max={200}
                 step={10}
               />
             </Box>
@@ -259,8 +259,8 @@ export default function FilterSidebar({
                 }}
                 valueLabelDisplay="auto"
                 min={0}
-                max={200000}
-                step={1000}
+                max={200}
+                step={200}
               />
             </Box>
           </AccordionDetails>
