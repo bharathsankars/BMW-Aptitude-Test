@@ -22,8 +22,9 @@ import PowerIcon from "@mui/icons-material/Power";
 import AirlineSeatReclineNormalIcon from "@mui/icons-material/AirlineSeatReclineNormal";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ElectricCarIcon from "@mui/icons-material/ElectricCar";
-import { getCar } from "../api/cars";
+import { getCar, getColumns } from "../api/cars";
 import type { ElectricCar } from "../types/car";
+import type { ColumnConfig } from "../types/query";
 import { useTheme } from "../contexts/ThemeContext";
 
 export default function EVDetailPage() {
@@ -34,6 +35,19 @@ export default function EVDetailPage() {
   const [car, setCar] = useState<ElectricCar | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [columns, setColumns] = useState<ColumnConfig[]>([]);
+
+  useEffect(() => {
+    const fetchColumns = async () => {
+      try {
+        const cols = await getColumns();
+        setColumns(cols);
+      } catch (error) {
+        console.error("Failed to fetch columns:", error);
+      }
+    };
+    fetchColumns();
+  }, []);
 
   useEffect(() => {
     const fetchCar = async () => {
@@ -88,17 +102,44 @@ export default function EVDetailPage() {
     );
   }
 
-  const detailItems: { label: string; value: string | number; icon: React.ReactNode }[] = [
-    { label: "Range", value: `${car.Range_Km} km`, icon: <EvStationIcon /> },
-    { label: "Price", value: `€${car.PriceEuro.toLocaleString()}`, icon: <EuroIcon /> },
-    { label: "0–100 km/h", value: `${car.AccelSec} seconds`, icon: <SpeedIcon /> },
-    { label: "Powertrain", value: car.PowerTrain, icon: <SettingsIcon /> },
-    { label: "Plug Type", value: car.PlugType, icon: <PowerIcon /> },
-    { label: "Body Style", value: car.BodyStyle, icon: <SettingsIcon /> },
-    { label: "Seats", value: car.Seats, icon: <AirlineSeatReclineNormalIcon /> },
-    { label: "Rapid Charge", value: car.RapidCharge, icon: <EvStationIcon /> },
-    { label: "Release Date", value: car.Date, icon: <CalendarTodayIcon /> },
-  ];
+  // Formatter map
+  const formatterMap: Record<string, (value: any) => string> = {
+    "km": (value) => value ? `${value.toLocaleString()} km` : "",
+    "€": (value) => value ? `€${value.toLocaleString()}` : "",
+    "s": (value) => value ? `${value} s` : "",
+    "km/h": (value) => value ? `${value} km/h` : "",
+    "Wh/km": (value) => value ? `${value} Wh/km` : "",
+  };
+
+  // Icon map
+  const iconMap: Record<string, React.ReactNode> = {
+    Range_Km: <EvStationIcon />,
+    PriceEuro: <EuroIcon />,
+    AccelSec: <SpeedIcon />,
+    PowerTrain: <SettingsIcon />,
+    PlugType: <PowerIcon />,
+    BodyStyle: <SettingsIcon />,
+    Seats: <AirlineSeatReclineNormalIcon />,
+    RapidCharge: <EvStationIcon />,
+    Date: <CalendarTodayIcon />,
+    TopSpeed_KmH: <SpeedIcon />,
+    Efficiency_WhKm: <SettingsIcon />,
+    FastCharge_KmH: <EvStationIcon />,
+    Segment: <SettingsIcon />,
+    Brand: <ElectricCarIcon />,
+    Model: <ElectricCarIcon />,
+  };
+
+  const detailItems = columns.map((col) => {
+    const value = car[col.field as keyof ElectricCar];
+    const formattedValue = col.format ? formatterMap[col.format]?.(value) || String(value || "") : String(value || "");
+    const icon = iconMap[col.field] || <ElectricCarIcon />;
+    return {
+      label: col.headerName,
+      value: formattedValue,
+      icon,
+    };
+  });
 
   return (
     <Card elevation={2} sx={{ maxWidth: 1200, mx: "auto", my: 4, border: '1px solid', borderColor: mode === 'light' ? 'grey.300' : '#555' }}>

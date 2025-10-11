@@ -1,8 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+// This is the main component for displaying the data grid
+// uses AG Grid to show electric car data
+
+import { useMemo, useRef, useState, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type { GridReadyEvent, GridApi, ColumnState } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { ModuleRegistry, AllCommunityModule } from "ag-grid-community";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   Box,
   Stack,
@@ -11,7 +15,6 @@ import {
   Button,
   Snackbar,
   Alert,
-  Paper,
   Typography,
   Pagination,
   Card,
@@ -26,36 +29,39 @@ import {
   DialogActions,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import SortIcon from "@mui/icons-material/Sort";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
 import WarningIcon from "@mui/icons-material/Warning";
+import DownloadIcon from "@mui/icons-material/Download";
 import { useNavigate } from "react-router-dom";
 
 import type { ElectricCar } from "../types/car";
-import type { Field, QueryInput } from "../types/query";
-import { queryCars, deleteCar } from "../api/cars";
-import FilterSidebar, { type SidebarFilter } from "./FilterSidebar";
+import type { Field, QueryInput, ColumnConfig } from "../types/query";
+import { queryCars, deleteCar, getColumns } from "../api/cars";
 
+//sorting and filtering
 type SortModel = { colId: string; sort: "asc" | "desc" }[];
 type FilterModel = Record<string, any>;
 
+//main function component
 export default function GenericDataGrid() {
+  // Hooks for navigation and theme
   const navigate = useNavigate();
+  const { mode } = useTheme();
 
+  // Register the AG Grid modules
   ModuleRegistry.registerModules([AllCommunityModule]);
 
-  // Hold AG Grid API once grid is ready
+  //holds the grid API
   const gridApiRef = useRef<GridApi | null>(null);
 
-  // Table state
+  // State for the table data
   const [rows, setRows] = useState<ElectricCar[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const pageSize = 25;
+  const pageSize = 25; // Number of rows per page
 
-  // UX state
+  // State for user experience and control
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{
@@ -69,13 +75,33 @@ export default function GenericDataGrid() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [carToDelete, setCarToDelete] = useState<ElectricCar | null>(null);
+  const [selectedRows, setSelectedRows] = useState<ElectricCar[]>([]);
+  const [columns, setColumns] = useState<ColumnConfig[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
 
-  // Filter sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarFilters, setSidebarFilters] = useState<SidebarFilter[]>([]);
+  // Fetch columns on mount
+  useEffect(() => {
+    async function fetchColumns() {
+      try {
+        const cols = await getColumns();
+        setColumns(cols);
+      } catch (error) {
+        console.error("Failed to fetch columns:", error);
+      }
+    }
+    fetchColumns();
+  }, []);
 
-  // Columns
+  // Load data when columns are available
+  useEffect(() => {
+    if (columns.length > 0 && rows.length === 0) {
+      load(1);
+    }
+  }, [columns]);
+
+  // Define the columns for the grid
   const columnDefs = useMemo(() => {
+    // Function to create number columns
     const numberCol = (
       field: Field,
       headerName?: string,
@@ -90,7 +116,15 @@ export default function GenericDataGrid() {
         ? (params: any) => formatter(params.value)
         : undefined,
       minWidth: 120,
+      filter: "agNumberColumnFilter",
+      filterParams: {
+        filterOptions: ["equals", "greaterThan", "lessThan", "blank"],
+        maxNumConditions: 1,
+      },
+      tooltipField: field,
     });
+
+    // Function to create text columns
     const textCol = (field: Field, headerName?: string) => ({
       field,
       headerName: headerName ?? field,
@@ -98,8 +132,21 @@ export default function GenericDataGrid() {
       resizable: true,
       cellStyle: { textAlign: "left" },
       minWidth: 100,
+      filter: "agTextColumnFilter",
+      filterParams: {
+        filterOptions: [
+          "contains",
+          "equals",
+          "startsWith",
+          "endsWith",
+          "blank",
+        ],
+        maxNumConditions: 1,
+      },
+      tooltipField: field,
     });
 
+    // Actions column with buttons
     const actionsCol = {
       headerName: "Actions",
       pinned: "right" as const,
@@ -133,29 +180,30 @@ export default function GenericDataGrid() {
       ),
     };
 
-    return [
-      actionsCol,
-      textCol("Brand"),
-      textCol("Model"),
-      numberCol("Range_Km", "Range (km)", (value) =>
-        value ? `${value.toLocaleString()} km` : ""
-      ),
-      numberCol("PriceEuro", "Price (€)", (value) =>
-        value ? `€${value.toLocaleString()}` : ""
-      ),
-      numberCol("AccelSec", "0–100 (s)", (value) =>
-        value ? `${value} s` : ""
-      ),
-      textCol("PowerTrain"),
-      textCol("PlugType"),
-      textCol("BodyStyle"),
-      textCol("RapidCharge"),
-      textCol("Seats"),
-      textCol("Date"),
-    ];
-  }, [navigate]);
+    // Formatter map
+    const formatterMap: Record<string, (value: any) => string> = {
+      "km": (value) => value ? `${value.toLocaleString()} km` : "",
+      "€": (value) => value ? `€${value.toLocaleString()}` : "",
+      "s": (value) => value ? `${value} s` : "",
+      "km/h": (value) => value ? `${value} km/h` : "",
+      "Wh/km": (value) => value ? `${value} Wh/km` : "",
+    };
 
-  // Delete confirmation dialog handlers
+    // Generate column definitions from fetched columns
+    const colDefs = columns.map((col) => {
+      const formatter = formatterMap[col.format || ""];
+      if (col.type === "number") {
+        return numberCol(col.field, col.headerName, formatter);
+      } else {
+        return textCol(col.field, col.headerName);
+      }
+    });
+
+    // Return all the column definitions
+    return [actionsCol, ...colDefs];
+  }, [navigate, columns]);
+
+  // Handler for confirming delete
   const handleDeleteConfirm = async () => {
     if (!carToDelete) return;
     try {
@@ -178,30 +226,92 @@ export default function GenericDataGrid() {
     }
   };
 
-  // Cancel Delete confirmation dialog handlers
+  // Handler for canceling delete
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setCarToDelete(null);
   };
 
-  // Build a backend query from grid state
-  function buildQuery(sidebarFiltersOverride?: SidebarFilter[]): QueryInput {
+  // Function to convert data to CSV format
+  function arrayToCSV(data: any[]): string {
+    if (data.length === 0) return "";
+    const allHeaders = Object.keys(data[0]);
+    const headers = allHeaders.filter((h) => h !== "id" && h !== "is_active"); // Exclude id and is_active fields
+    const csv = [headers.join(",")];
+    data.forEach((row) => {
+      const values = headers.map((h) => {
+        const val = row[h];
+        if (val == null) return "";
+        const str = String(val);
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+          return `"${str.replace(/"/g, '""')}"`; // Escape quotes
+        }
+        return str;
+      });
+      csv.push(values.join(","));
+    });
+    return csv.join("\n");
+  }
+
+  // Handler for exporting data
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const q = buildQuery();
+      q.pageSize = 200; // Set to fetch all data
+      q.page = 1;
+      const res = await queryCars(q);
+      const csv = arrayToCSV(res.rows);
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "electric_cars.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      setToast({
+        open: true,
+        msg: "Data exported successfully.",
+        severity: "success",
+      });
+    } catch (e: any) {
+      setToast({
+        open: true,
+        msg: e?.message || "Export failed",
+        severity: "error",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Handler for when selection changes
+  const onSelectionChanged = () => {
+    if (gridApiRef.current) {
+      const selected = gridApiRef.current.getSelectedRows();
+      setSelectedRows(selected);
+    }
+  };
+
+  // Function to build query from grid state
+  function buildQuery(): QueryInput {
     const filterModel: FilterModel =
       gridApiRef.current?.getFilterModel?.() ?? {};
 
-    // Derive sort using GridApi.getColumnState()
+    // Get sort state
     const colState: ColumnState[] =
       gridApiRef.current?.getColumnState?.() ?? [];
     const sort: SortModel = colState
       .filter((c) => !!c.sort)
       .map((c) => ({ colId: String(c.colId), sort: c.sort as "asc" | "desc" }));
 
+    // Build filters
     const gridFilters: QueryInput["filters"] = Object.entries(
       filterModel
     ).flatMap(([field, f]) => {
       if (!f) return [];
       if (f.filterType === "text") {
-        const op = f.type ?? "contains";
+        const op = f.type === "blank" ? "isEmpty" : f.type ?? "contains";
         return [{ field: field as Field, op, value: f.filter }];
       }
       if (f.filterType === "number") {
@@ -209,20 +319,23 @@ export default function GenericDataGrid() {
           greaterThan: "greaterThan",
           lessThan: "lessThan",
           equals: "equals",
+          blank: "isEmpty",
         };
         const op = opMap[f.type] ?? "equals";
-        return [{ field: field as Field, op, value: Number(f.filter) }];
+        return [
+          {
+            field: field as Field,
+            op,
+            value: f.type === "blank" ? undefined : Number(f.filter),
+          },
+        ];
       }
       return [];
     });
 
-    // Merge sidebar filters
-    const allFilters = [
-      ...gridFilters,
-      ...(sidebarFiltersOverride ?? sidebarFilters),
-    ];
+    const allFilters = [...gridFilters];
 
-    // Map SortModel -> your QueryInput["sort"]
+    // Map sort
     const mappedSort = sort.map((s) => ({
       field: s.colId as Field,
       dir: s.sort,
@@ -231,15 +344,15 @@ export default function GenericDataGrid() {
     return { page, pageSize, search, sort: mappedSort, filters: allFilters };
   }
 
-  // Fetch data
-  async function load(toPage = page, sidebarFiltersOverride?: SidebarFilter[]) {
+  // Function to load data
+  async function load(toPage = page) {
     setLoading(true);
     try {
-      const q = buildQuery(sidebarFiltersOverride);
+      const q = buildQuery();
       q.page = toPage;
       const res = await queryCars(q);
       setRows(res.rows);
-      console.log("Rows after setRows:", res.rows);
+      console.log("Rows after setRows:", res.rows); // Debug log
       setTotal(res.total);
       setPage(toPage);
     } finally {
@@ -247,24 +360,13 @@ export default function GenericDataGrid() {
     }
   }
 
-  // Grid ready -> capture API, then initial load
+  // Handler for when grid is ready
   function onGridReady(params: GridReadyEvent) {
     console.log("Grid API set:", params.api);
     gridApiRef.current = params.api;
-    load(1);
   }
 
-  // Sidebar handlers
-  const handleApplyFilters = (filters: SidebarFilter[]) => {
-    setSidebarFilters(filters);
-    load(1, filters);
-  };
-
-  const handleClearFilters = () => {
-    setSidebarFilters([]);
-    load(1, []);
-  };
-
+  // Return the JSX
   return (
     <Card elevation={3} sx={{ borderRadius: 3, overflow: "hidden" }}>
       <CardHeader
@@ -281,7 +383,7 @@ export default function GenericDataGrid() {
                 onKeyDown={(e) => e.key === "Enter" && load(1)}
                 sx={{
                   width: 420,
-                  backgroundColor: "white",
+                  backgroundColor: mode === "light" ? "white" : "#2a2a2a",
                   borderRadius: 1,
                   padding: 1,
                 }}
@@ -290,6 +392,14 @@ export default function GenericDataGrid() {
               />
               <Button variant="contained" onClick={() => load(1)}>
                 Search
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={exportLoading ? <CircularProgress size={20} /> : <DownloadIcon />}
+                onClick={handleExport}
+                disabled={exportLoading}
+              >
+                {exportLoading ? "Exporting..." : "Export CSV"}
               </Button>
             </Stack>
           </Box>
@@ -301,23 +411,15 @@ export default function GenericDataGrid() {
             align="center"
             sx={{ fontSize: "0.875rem" }}
           >
-            Click on column headers to sort data
+            Click on column headers to sort or filter data. Use Ctrl+click for
+            multi-sort.
           </Typography>
-        }
-        action={
-          <Stack direction="row" spacing={1}>
-            <Tooltip title="Toggle Filters">
-              <IconButton onClick={() => setSidebarOpen(true)}>
-                <FilterListIcon />
-              </IconButton>
-            </Tooltip>
-          </Stack>
         }
         sx={{ pb: 1 }}
       />
       <Divider />
       <CardContent sx={{ p: 0 }}>
-        {/* Grid */}
+        {/* The Grid */}
         <Box sx={{ position: "relative", height: "72vh" }}>
           {loading && (
             <Box
@@ -330,7 +432,10 @@ export default function GenericDataGrid() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                backgroundColor:
+                  mode === "light"
+                    ? "rgba(255, 255, 255, 0.8)"
+                    : "rgba(0, 0, 0, 0.8)",
                 zIndex: 10,
               }}
             >
@@ -345,14 +450,20 @@ export default function GenericDataGrid() {
               onGridReady={onGridReady}
               rowData={rows}
               columnDefs={columnDefs as any}
-              defaultColDef={{ sortable: true, filter: false, resizable: true }}
+              defaultColDef={{
+                sortable: true,
+                filter: false,
+                resizable: true,
+                floatingFilter: false,
+              }}
               onFilterChanged={() => load(1)}
               onSortChanged={() => load(1)}
               suppressPaginationPanel={true}
               animateRows={true}
               rowHeight={50}
               headerHeight={50}
-              rowSelection="single"
+              rowSelection="multiple"
+              onSelectionChanged={onSelectionChanged}
               alwaysShowVerticalScroll={true}
               multiSortKey="ctrl"
               overlayNoRowsTemplate='<span style="padding: 10px; border: 1px solid #ccc; background: #fafafa;">No data to display</span>'
@@ -365,7 +476,7 @@ export default function GenericDataGrid() {
           </div>
         </Box>
 
-        {/* Pager */}
+        {/* Pagination */}
         <Stack
           direction="row"
           spacing={2}
@@ -389,7 +500,7 @@ export default function GenericDataGrid() {
         </Stack>
       </CardContent>
 
-      {/* Toasts */}
+      {/* Toast notifications */}
       <Snackbar
         open={toast.open}
         autoHideDuration={3000}
@@ -405,6 +516,7 @@ export default function GenericDataGrid() {
         </Alert>
       </Snackbar>
 
+      {/* Custom styles */}
       <style>
         {`
            .ag-theme-quartz .ag-header-cell.ag-header-cell-sorted-asc .ag-sort-ascending-icon {
@@ -490,6 +602,26 @@ export default function GenericDataGrid() {
           .ag-theme-quartz .ag-header-cell-label .ag-header-icon .ag-icon {
             font-size: 18px;
           }
+
+          /* Dark mode overrides */
+          [data-theme="dark"] .even-row {
+            background-color: #2a2a2a;
+          }
+          [data-theme="dark"] .odd-row {
+            background-color: #1e1e1e;
+          }
+          [data-theme="dark"] .ag-theme-quartz .ag-row:hover {
+            background-color: #333 !important;
+          }
+          [data-theme="dark"] .ag-theme-quartz .ag-header {
+            background-color: #1e1e1e;
+          }
+          [data-theme="dark"] .ag-theme-quartz .ag-header-cell-label {
+            color: rgba(255, 255, 255, 0.7);
+          }
+          [data-theme="dark"] .ag-theme-quartz .ag-cell {
+            color: rgba(255, 255, 255, 0.87);
+          }
         `}
       </style>
 
@@ -536,15 +668,6 @@ export default function GenericDataGrid() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Filter Sidebar */}
-      <FilterSidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onApplyFilters={handleApplyFilters}
-        onClearFilters={handleClearFilters}
-        currentFilters={sidebarFilters}
-      />
     </Card>
   );
 }

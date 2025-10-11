@@ -17,3 +17,5 @@ export type ElectricCar = {
   Date: string;       // YYYY-MM-DD
   is_active: number; 
 };
+
+export type Field = keyof ElectricCar;

@@ -38,6 +38,13 @@ export class CarsService {
     const result = await qb.getRawMany();
     return result.map(row => row[field]);
   }
+
+  async bulkSoftDelete(ids: number[]) {
+    const found = await this.repo.find({ where: ids.map(id => ({ id, is_active: 1 })) });
+    if (found.length !== ids.length) return false; // some not found or inactive
+    await this.repo.update(ids, { is_active: 0 });
+    return true;
+  }
 }
 
 export const carsService = new CarsService();

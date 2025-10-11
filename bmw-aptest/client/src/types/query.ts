@@ -7,6 +7,13 @@ export const allowedFields = [
 
 export type Field = typeof allowedFields[number];
 
+export type ColumnConfig = {
+  field: Field;
+  headerName: string;
+  type: "text" | "number";
+  format?: string;
+};
+
 export type QueryInput = {
   page?: number;
   pageSize?: number;

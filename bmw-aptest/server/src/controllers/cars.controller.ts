@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { carsService } from "../services/cars.service";
 import { querySchema } from "../validators/query";
+import { displayColumns } from "../utils/fields";
 
 export async function postQuery(req: Request, res: Response) {
   const parsed = querySchema.safeParse(req.body);
@@ -42,4 +43,16 @@ export async function getUniqueValues(req: Request, res: Response) {
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch unique values" });
   }
+}
+
+export async function bulkSoftDelete(req: Request, res: Response) {
+  const ids = req.body.ids;
+  if (!Array.isArray(ids) || !ids.every(id => Number.isInteger(id) && id > 0)) return res.status(400).json({ error: "Bad ids" });
+  const ok = await carsService.bulkSoftDelete(ids);
+  if (!ok) return res.status(404).json({ error: "Some ids not found or already inactive" });
+  res.status(204).end();
+}
+
+export async function getColumns(req: Request, res: Response) {
+  res.json(displayColumns);
 }

@@ -1,5 +1,5 @@
 import { http } from "./http";
-import type { QueryInput, QueryResult } from "../types/query";
+import type { QueryInput, QueryResult, ColumnConfig } from "../types/query";
 import type { ElectricCar } from "../types/car";
 
 export async function queryCars(input: QueryInput): Promise<QueryResult<ElectricCar>> {
@@ -22,5 +22,14 @@ export async function restoreCar(id: number): Promise<void> {
 
 export async function getUniqueValues(field: string): Promise<string[]> {
   const res = await http.get(`/api/cars/unique/${field}`);
+  return res.data;
+}
+
+export async function bulkDelete(ids: number[]): Promise<void> {
+  await http.delete("/api/cars/bulk", { data: { ids } });
+}
+
+export async function getColumns(): Promise<ColumnConfig[]> {
+  const res = await http.get("/api/cars/columns");
   return res.data;
 }
